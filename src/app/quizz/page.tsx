@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import ProgressBar from '../../components/ui/ProgressBar';
 import { ChevronLeft, X } from "lucide-react";
 import ResultCard from "./ResultCard";
+import QuizSubmission from "./QuizSubmission";
 
 
 const questions = [
@@ -35,25 +36,25 @@ const questions = [
     ]
   },
   {
-    questionText : "What is React 2",
+    questionText : "What is 1 + 1",
     answers: [
       {
-        answerText: "A library",
+        answerText: "Two",
         isCorrect: true,
         id: 1
       },
       {
-        answerText: "A framewrk",
+        answerText: "3",
         isCorrect: false,
         id: 2
       },
       {
-        answerText: "A good library",
+        answerText: "4",
         isCorrect: false,
         id: 3
       },
       {
-        answerText: "A shjiot  library",
+        answerText: "1",
         isCorrect: false,
         id: 4
       },
@@ -72,6 +73,8 @@ export default function Home() {
   const [questionIndex, setQuestionIndex] = useState(-1)
   const [score, setScore] = useState(0)
   const [questionState, setQuestionState] = useState(State.New)
+  const [selectedAnswer, setSelectedAnswer] = useState(-1)
+  const [submitting, setSubmitting] = useState(false)
 
   const hasMoreQuestion = questionIndex < questions.length - 1
   const hasStarted = questionIndex > -1
@@ -85,21 +88,34 @@ export default function Home() {
   }, [questionIndex])
 
   const handleNext = () => {
-    if(questionIndex > questions.length - 1) {
+    if(!hasMoreQuestion) {
+      setSubmitting(true)
       return
     }
     setQuestionState(State.New)
     setQuestionIndex(v => v + 1);
+    setSelectedAnswer(-1)
   }
 
-  const handleAnswerClick = (isCorrect: boolean ) => {
-    setQuestionState(isCorrect ? State.Correct : State.Wrong)
-    if(isCorrect ) {
-      
+  const handleAnswerClick = ({chosenIndex, isCorrect} : {chosenIndex : number, isCorrect : boolean}) => {
+    if(questionState != State.New) {
+      return
     }
+    setQuestionState(isCorrect ? State.Correct : State.Wrong)
+    isCorrect && setScore(v => v + 1)
+    setSelectedAnswer(chosenIndex)
+  }
+
+
+  if(submitting) {
+    const scorePercentage = Math.round((score / questions.length) * 100);
+    return (
+      <QuizSubmission score={score} scorePercentage={scorePercentage} totalQuestions={questions.length} />
+    )
   }
 
   const percentage = ((questionIndex + 1) / questions.length) * 100
+
   return (
     <div className="flex flex-col flex-1">
       <div className="sticky top-0 z-10 shadow-md py-4 w-full">
@@ -122,11 +138,21 @@ export default function Home() {
             </h2>
             <div className="grid grid-cols-1 gap-6 mt-6">
               {
-                currentQuestion.answers.map(v => (
-                  <Button key={v.id} onClick={() => handleAnswerClick(v.isCorrect)}>
-                    {v.answerText}
-                  </Button>
-                ))
+                currentQuestion.answers.map(v => {
+                  const variant = questionState == State.New ? "neoOutline" : (
+                    selectedAnswer == v.id ? (
+                      questionState == State.Correct ? "neoSuccess" : "neoDanger"
+                    ) : "neoOutline"
+                  )
+                  return (
+                    <Button key={v.id}
+                     size="xl" 
+                     variant={variant}
+                     onClick={() => handleAnswerClick({chosenIndex: v.id, isCorrect: v.isCorrect })}>
+                      <p className="whitespace-normal">{v.answerText}</p>
+                    </Button>
+                  );
+                })
               }
             </div>
           </div>
@@ -138,7 +164,9 @@ export default function Home() {
           questionState != State.New && 
           <ResultCard isCorrect={questionState == State.Correct} correctAnswer={correctAnswer?.answerText!} />
         }
-        <Button onClick={handleNext} disabled={!hasMoreQuestion}>{hasStarted ? 'Next' : "Start"}</Button>
+        <Button variant="neo" size="xl" onClick={handleNext} >{hasStarted ? (
+          hasMoreQuestion ? 'Next' : "Submit"
+        ) : "Start"}</Button>
       </footer>
     </div>
   )
